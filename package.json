@@ -1,25 +1,33 @@
 {
   "name": "conform",
-  "version": "0.2.5",
+  "version": "0.0.1",
   "description": "A schema validation and filtering framework",
-  "author": "Oleg Korobenko <oleg.korobenko@gmail.com>",
+  "author": "Pavel Vlasov <freakycue@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git://github.com/okv/conform.js"
+    "url": "git://github.com/freakycue/conform.js"
   },
   "keywords": [
-    "validator", "validation", "filter", "filtering", "params", "schema",
-    "jsonschema"
+    "validator",
+    "validation",
+    "filter",
+    "filtering",
+    "params",
+    "schema",
+    "jsonschema",
+    "ref",
+    "recursive"
   ],
   "devDependencies": {
-    "vows": "0.6.x"
+    "vows": "0.7.0",
+    "mocha": "1.17.0",
+    "expect.js": "~0.2.0"
   },
-  "main": "./lib/revalidator",
+  "main": "./lib/index",
   "scripts": {
-    "test": "vows test/*-test.js --spec"
+    "test": "mocha test/test.js"
   },
   "engines": {
     "node": ">= 0.4.0"
   }
 }
-
