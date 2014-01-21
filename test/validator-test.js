@@ -1,6 +1,7 @@
 var assert = require('assert'),
     vows = require('vows'),
-    revalidator = require('../lib/revalidator');
+    validator = require('../lib').validator,
+    mixin = require('../lib').mixin;
 
 function clone(object) {
   return Object.keys(object).reduce(function (obj, k) {
@@ -11,6 +12,7 @@ function clone(object) {
 
 
 function assertInvalid(res) {
+  console.log(">>> res.stack: ", res.stack);
   assert.isObject(res);
   assert.strictEqual(res.valid, false);
 }
@@ -38,6 +40,7 @@ function assertHasErrorMsg(attr, msg) {
   };
 }
 
+var _schemaId = 1;
 function assertValidates(passingValue, failingValue, attributes) {
   var schema = {
     name: 'Resource',
@@ -54,12 +57,14 @@ function assertValidates(passingValue, failingValue, attributes) {
   }
 
   var attr = Object.keys(attributes)[0];
-  revalidator.mixin(schema.properties.field, attributes);
+  mixin(schema.properties.field, attributes);
 
   var result = {
     "when the object conforms": {
       topic: function () {
-        return revalidator.validate({ field: passingValue }, schema);
+        var schemaId = _schemaId++;
+        validator.add(schemaId, schema);
+        return validator.validate({ field: passingValue }, schemaId);
       },
       "return an object with `valid` set to true": assertValid
     }
@@ -68,7 +73,9 @@ function assertValidates(passingValue, failingValue, attributes) {
   if (failing) {
     result["when the object does not conform"] ={
       topic: function () {
-        return revalidator.validate({ field: failingValue }, schema);
+        var schemaId = _schemaId++;
+        validator.add(schemaId, schema);
+        return validator.validate({ field: failingValue }, schemaId);
       },
       "return an object with `valid` set to false": assertInvalid,
       "and an error concerning the attribute":      assertHasError(Object.keys(attributes)[0], 'field')
@@ -78,7 +85,13 @@ function assertValidates(passingValue, failingValue, attributes) {
   return result;
 }
 
-vows.describe('revalidator', {
+function validate(obj, schema) {
+  var schemaId = _schemaId++;
+  validator.add(schemaId, schema);
+  return validator.validate(obj, schemaId);
+};
+
+vows.describe('validator', {
   "Validating": {
     "with <type>:'string'":       assertValidates ('hello',   42,        { type: "string" }),
     "with <type>:'number'":       assertValidates (42,       'hello',    { type: "number" }),
@@ -108,13 +121,13 @@ vows.describe('revalidator', {
       },
       "when the object conforms": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna", country: "moon" }, schema);
+          return validate({town: "luna", country: "moon"}, schema);
         },
         "return an object with `valid` set to true": assertValid
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna" }, schema);
+          return validator.validate({ town: "luna" }, schema);
         },
         "return an object with `valid` set to false": assertInvalid,
         "and an error concerning the attribute":      assertHasError('dependencies')
@@ -130,13 +143,13 @@ vows.describe('revalidator', {
       },
       "when the object conforms": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna", country: "moon", planet: "mars" }, schema);
+          return validator.validate({ town: "luna", country: "moon", planet: "mars" }, schema);
         },
         "return an object with `valid` set to true": assertValid
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna", planet: "mars" }, schema);
+          return validator.validate({ town: "luna", planet: "mars" }, schema);
         },
         "return an object with `valid` set to false": assertInvalid,
         "and an error concerning the attribute":      assertHasError('dependencies')
@@ -156,13 +169,13 @@ vows.describe('revalidator', {
       },
       "when the object conforms": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna", x: 1 }, schema);
+          return validator.validate({ town: "luna", x: 1 }, schema);
         },
         "return an object with `valid` set to true": assertValid,
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna", x: 'no' }, schema);
+          return validator.validate({ town: "luna", x: 'no' }, schema);
         },
         "return an object with `valid` set to false": assertInvalid
       }
@@ -181,13 +194,13 @@ vows.describe('revalidator', {
       },
       "when the object conforms": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna" }, schema);
+          return validator.validate({ town: "luna" }, schema);
         },
         "return an object with `valid` set to true": assertValid
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna", area: 'park' }, schema);
+          return validator.validate({ town: "luna", area: 'park' }, schema);
         },
         "return an object with `valid` set to false": assertInvalid
       }
@@ -200,13 +213,13 @@ vows.describe('revalidator', {
       },
       "when the object conforms": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna" }, schema, {additionalProperties: false});
+          return validator.validate({ town: "luna" }, schema, {additionalProperties: false});
         },
         "return an object with `valid` set to true": assertValid
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return revalidator.validate({ town: "luna", area: 'park' }, schema, {additionalProperties: false});
+          return validator.validate({ town: "luna", area: 'park' }, schema, {additionalProperties: false});
         },
         "return an object with `valid` set to false": assertInvalid
       },
@@ -219,7 +232,7 @@ vows.describe('revalidator', {
         },
         "when the object does not conform": {
           topic: function (schema) {
-            return revalidator.validate({ town: "luna", area: 'park' }, schema, {additionalProperties: false});
+            return validator.validate({ town: "luna", area: 'park' }, schema, {additionalProperties: false});
           },
           "return an object with `valid` set to true": assertValid
         }
@@ -285,10 +298,10 @@ vows.describe('revalidator', {
         palindrome: 'dennis sinned',
         _flag: true
       },
-      "can be validated with `revalidator.validate`": {
+      "can be validated with `validator.validate`": {
         "and if it conforms": {
           topic: function (object, schema) {
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with the `valid` property set to true": assertValid,
           "return an object with the `errors` property as an empty array": function (res) {
@@ -300,7 +313,7 @@ vows.describe('revalidator', {
           topic: function (object, schema) {
             object = clone(object);
             delete object.author;
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid,
           "and an error concerning the 'required' attribute": assertHasError('required'),
@@ -310,7 +323,7 @@ vows.describe('revalidator', {
           topic: function (object, schema) {
             object = clone(object);
             delete object.category;
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with `valid` set to false":       assertValid
         },
@@ -318,7 +331,7 @@ vows.describe('revalidator', {
           topic: function (object, schema) {
             object = clone(object);
             object._additionalFlag = 'text';
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -326,7 +339,7 @@ vows.describe('revalidator', {
           topic: function (object, schema) {
             object = clone(object);
             object.tags = ['a', 'a'];
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -334,7 +347,7 @@ vows.describe('revalidator', {
           topic: function (object, schema) {
             object = clone(object);
             object.tags = ['a', '____'];
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -342,7 +355,7 @@ vows.describe('revalidator', {
           topic: function (object, schema) {
             object = clone(object);
             object.tags = ['x'];
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -350,7 +363,7 @@ vows.describe('revalidator', {
           topic: function (object, schema) {
             object = clone(object);
             object.date = 'bad date';
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid,
           "and the error message defined":                    assertHasErrorMsg('format', "must be a valid date and nothing else")
@@ -359,7 +372,7 @@ vows.describe('revalidator', {
           topic: function (object, schema) {
             object = clone(object);
             object.palindrome = 'bad palindrome';
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -367,7 +380,7 @@ vows.describe('revalidator', {
           topic: function (object, schema) {
             object = clone(object);
             object.author = 'email@address.com';
-            return revalidator.validate(object, schema);
+            return validator.validate(object, schema);
           },
           "return an object with `valid` set to false":      assertInvalid,
           "and an error concerning the 'pattern' attribute": assertHasError('pattern')
@@ -384,13 +397,13 @@ vows.describe('revalidator', {
       "and <integer> property": {
         "is castable string": {
           topic: function (schema) {
-            return revalidator.validate({ answer: "42" }, schema, { cast: true });
+            return validator.validate({ answer: "42" }, schema, { cast: true });
           },
           "return an object with `valid` set to true": assertValid
         },
         "is uncastable string": {
           topic: function (schema) {
-            return revalidator.validate({ answer: "forty2" }, schema, { cast: true });
+            return validator.validate({ answer: "forty2" }, schema, { cast: true });
           },
           "return an object with `valid` set to false": assertInvalid
         }
@@ -425,7 +438,7 @@ vows.describe('revalidator', {
           };
           var options = { cast: true, castSource: true };
           return {
-            res: revalidator.validate(source, schema, options),
+            res: validator.validate(source, schema, options),
             source: source
           };
         },
@@ -474,44 +487,44 @@ vows.describe('revalidator', {
       "and <boolean> property": {
         "is castable 'true/false' string": {
           topic: function (schema) {
-            return revalidator.validate({ is_ready: "true" }, schema, { cast: true });
+            return validator.validate({ is_ready: "true" }, schema, { cast: true });
           },
           "return an object with `valid` set to true": assertValid
         },
         "is castable '1/0' string": {
           topic: function (schema) {
-            return revalidator.validate({ is_ready: "1" }, schema, { cast: true });
+            return validator.validate({ is_ready: "1" }, schema, { cast: true });
           },
           "return an object with `valid` set to true": assertValid
         },
         "is castable `1/0` integer": {
           topic: function (schema) {
-            return revalidator.validate({ is_ready: 1 }, schema, { cast: true });
+            return validator.validate({ is_ready: 1 }, schema, { cast: true });
           },
           "return an object with `valid` set to true": assertValid
         },
         "is uncastable string": {
           topic: function (schema) {
-            return revalidator.validate({ is_ready: "not yet" }, schema, { cast: true });
+            return validator.validate({ is_ready: "not yet" }, schema, { cast: true });
           },
           "return an object with `valid` set to false": assertInvalid
         },
         "is uncastable number": {
           topic: function (schema) {
-            return revalidator.validate({ is_ready: 42 }, schema, { cast: true });
+            return validator.validate({ is_ready: 42 }, schema, { cast: true });
           },
           "return an object with `valid` set to false": assertInvalid
         }
       },
       "default true": {
         topic: function(schema) {
-          revalidator.validate.defaults.cast = true;
+          validator.validate.defaults.cast = true;
           return schema;
         },
         "and no direct <cast> option passed to validate": {
           "and castable number": {
             topic: function (schema) {
-              return revalidator.validate({ answer: "42" }, schema);
+              return validator.validate({ answer: "42" }, schema);
             },
             "return an object with `valid` set to true": assertValid
           }
@@ -519,7 +532,7 @@ vows.describe('revalidator', {
         "and direct <cast> false passed to validate": {
           "and castable number": {
             topic: function (schema) {
-              return revalidator.validate({ answer: "42" }, schema, { cast: false });
+              return validator.validate({ answer: "42" }, schema, { cast: false });
             },
             "return an object with `valid` set to false": assertInvalid
           }
@@ -554,7 +567,7 @@ vows.describe('revalidator', {
           topic: function (schema) {
             var source = { town: "Auckland" };
             return {
-              res: revalidator.validate(source, schema, {applyDefaultValue: true}),
+              res: validator.validate(source, schema, {applyDefaultValue: true}),
               source: source
             }
           },
@@ -580,7 +593,7 @@ vows.describe('revalidator', {
               planet: "Mars"
             };
             return {
-              res: revalidator.validate(source, schema, {applyDefaultValue: true}),
+              res: validator.validate(source, schema, {applyDefaultValue: true}),
               source: source
             }
           },
@@ -597,7 +610,7 @@ vows.describe('revalidator', {
       "not enabled": {
           topic: function (schema) {
             var source = { town: "Auckland" };
-            return { res: revalidator.validate(source, schema), source: source }
+            return { res: validator.validate(source, schema), source: source }
           },
           "return an object with `valid` set to true": function(topic) {
             return assertValid(topic.res);
@@ -631,7 +644,7 @@ vows.describe('revalidator', {
         "and valid default value": {
           topic: function(schema) {
             schema.properties.country['default'] = { id: 1, name: "New Zealand" };
-            return revalidator.validate(
+            return validator.validate(
               { town: "Auckland" }, schema, { validateDefaultValue: true }
             );
           },
@@ -640,7 +653,7 @@ vows.describe('revalidator', {
         "and invalid default value": {
           topic: function(schema) {
             schema.properties.country['default'] = { id: "abc", name: "New Zealand" };
-            return revalidator.validate(
+            return validator.validate(
               { town: "Auckland" }, schema, { validateDefaultValue: true }
             );
           },
@@ -652,7 +665,7 @@ vows.describe('revalidator', {
         "and invalid default value": {
           topic: function(schema) {
             schema.properties.country['default'] = { id: "abc", name: "New Zealand" };
-            return revalidator.validate({ town: "Auckland" }, schema);
+            return validator.validate({ town: "Auckland" }, schema);
           },
           "return an object with `valid` set to true": assertValid
         }
@@ -686,7 +699,7 @@ vows.describe('revalidator', {
       },
       "when <exitOnFirstError> option enabled": {
         topic: function (topic) {
-          return revalidator.validate(topic.source, topic.schema, {exitOnFirstError: true});
+          return validator.validate(topic.source, topic.schema, {exitOnFirstError: true});
         },
         "return an object with `valid` set to false": assertInvalid,
         "1 error at errors": function(topic) {
@@ -695,7 +708,7 @@ vows.describe('revalidator', {
       },
       "when <exitOnFirstError> option not enabled": {
           topic: function (topic) {
-            return revalidator.validate(topic.source, topic.schema);
+            return validator.validate(topic.source, topic.schema);
           },
           "return an object with `valid` set to false": assertInvalid,
           "2 errors at errors": function(topic) {
@@ -705,7 +718,7 @@ vows.describe('revalidator', {
       "when <failOnFirstError> option enabled": {
         topic: function (topic) {
           assert.throws(function() {
-            revalidator.validate(topic.source, topic.schema, {failOnFirstError: true});
+            validator.validate(topic.source, topic.schema, {failOnFirstError: true});
           }, function(err) {
               assert.strictEqual(err.message, 'Attribute `type` of property `town` hasn`t ' +
               'pass check, expected value: `string` actual value: `number` ' +
@@ -722,10 +735,10 @@ vows.describe('revalidator', {
     },
     "filtering": {
       topic: function() {
-        revalidator.validate.filters.trim = function(value) {
+        validator.validate.filters.trim = function(value) {
           return value.replace(/^\s+|\s+$/g, '');
         };
-        revalidator.validate.filters.stripTags = function(value) {
+        validator.validate.filters.stripTags = function(value) {
           return value.replace(/<(?:.|\n)*?>/gm, '');
         };
         return {
@@ -744,7 +757,7 @@ vows.describe('revalidator', {
               },
               planet: {
                 type: ["string", "integer", "object"],
-                filter: ["stripTags", revalidator.validate.filters.trim]
+                filter: ["stripTags", validator.validate.filters.trim]
               }
             }
         };
@@ -764,7 +777,7 @@ vows.describe('revalidator', {
             };
             var source = getSource();
             return {
-              res: revalidator.validate(source, schema),
+              res: validator.validate(source, schema),
               source: source,
               originalSource: getSource()
             };
@@ -775,16 +788,16 @@ vows.describe('revalidator', {
           "and modified source object": function(topic) {
             assert.strictEqual(
               topic.source.town,
-              revalidator.validate.filters.trim(topic.originalSource.town)
+              validator.validate.filters.trim(topic.originalSource.town)
             );
             assert.strictEqual(
               topic.source.country.name,
-              revalidator.validate.filters.stripTags(topic.originalSource.country.name)
+              validator.validate.filters.stripTags(topic.originalSource.country.name)
             );
             assert.strictEqual(
               topic.source.planet,
-              revalidator.validate.filters.stripTags(
-                revalidator.validate.filters.trim(topic.originalSource.planet)
+              validator.validate.filters.stripTags(
+                validator.validate.filters.trim(topic.originalSource.planet)
               )
             );
           }
@@ -803,7 +816,7 @@ vows.describe('revalidator', {
             };
             var source = getSource();
             return {
-              res: revalidator.validate(source, schema),
+              res: validator.validate(source, schema),
               source: source,
               originalSource: getSource()
             }
@@ -820,8 +833,8 @@ vows.describe('revalidator', {
           "and modified 'planet'": function(topic) {
             assert.strictEqual(
               topic.source.planet,
-              revalidator.validate.filters.stripTags(
-                revalidator.validate.filters.trim(topic.originalSource.planet)
+              validator.validate.filters.stripTags(
+                validator.validate.filters.trim(topic.originalSource.planet)
               )
             );
           }
@@ -830,7 +843,7 @@ vows.describe('revalidator', {
       "with invalid values": {
         "(values break filter function)": {
           topic: function(schema) {
-            return revalidator.validate({
+            return validator.validate({
                 town: null,
                 country: {
                   id: 1,
@@ -847,7 +860,7 @@ vows.describe('revalidator', {
         },
         "(values of unfilterable types)": {
           topic: function(schema) {
-            return revalidator.validate({
+            return validator.validate({
                 town: [1, 2],
                 country: {
                   id: 1,
