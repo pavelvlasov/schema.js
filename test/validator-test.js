@@ -12,7 +12,6 @@ function clone(object) {
 
 
 function assertInvalid(res) {
-  console.log(">>> res.stack: ", res.stack);
   assert.isObject(res);
   assert.strictEqual(res.valid, false);
 }
@@ -41,6 +40,12 @@ function assertHasErrorMsg(attr, msg) {
 }
 
 var _schemaId = 1;
+function validate(obj, schema, options) {
+  var schemaId = _schemaId++;
+  validator.add(schema, schemaId);
+  return validator.validate(obj, schemaId, options);
+}
+
 function assertValidates(passingValue, failingValue, attributes) {
   var schema = {
     name: 'Resource',
@@ -62,9 +67,7 @@ function assertValidates(passingValue, failingValue, attributes) {
   var result = {
     "when the object conforms": {
       topic: function () {
-        var schemaId = _schemaId++;
-        validator.add(schemaId, schema);
-        return validator.validate({ field: passingValue }, schemaId);
+        return validate({ field: passingValue }, schema);
       },
       "return an object with `valid` set to true": assertValid
     }
@@ -73,9 +76,7 @@ function assertValidates(passingValue, failingValue, attributes) {
   if (failing) {
     result["when the object does not conform"] ={
       topic: function () {
-        var schemaId = _schemaId++;
-        validator.add(schemaId, schema);
-        return validator.validate({ field: failingValue }, schemaId);
+        return validate({ field: failingValue }, schema);
       },
       "return an object with `valid` set to false": assertInvalid,
       "and an error concerning the attribute":      assertHasError(Object.keys(attributes)[0], 'field')
@@ -84,12 +85,6 @@ function assertValidates(passingValue, failingValue, attributes) {
 
   return result;
 }
-
-function validate(obj, schema) {
-  var schemaId = _schemaId++;
-  validator.add(schemaId, schema);
-  return validator.validate(obj, schemaId);
-};
 
 vows.describe('validator', {
   "Validating": {
@@ -127,7 +122,7 @@ vows.describe('validator', {
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return validator.validate({ town: "luna" }, schema);
+          return validate({ town: "luna" }, schema);
         },
         "return an object with `valid` set to false": assertInvalid,
         "and an error concerning the attribute":      assertHasError('dependencies')
@@ -143,13 +138,13 @@ vows.describe('validator', {
       },
       "when the object conforms": {
         topic: function (schema) {
-          return validator.validate({ town: "luna", country: "moon", planet: "mars" }, schema);
+          return validate({ town: "luna", country: "moon", planet: "mars" }, schema);
         },
         "return an object with `valid` set to true": assertValid
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return validator.validate({ town: "luna", planet: "mars" }, schema);
+          return validate({ town: "luna", planet: "mars" }, schema);
         },
         "return an object with `valid` set to false": assertInvalid,
         "and an error concerning the attribute":      assertHasError('dependencies')
@@ -169,13 +164,13 @@ vows.describe('validator', {
       },
       "when the object conforms": {
         topic: function (schema) {
-          return validator.validate({ town: "luna", x: 1 }, schema);
+          return validate({ town: "luna", x: 1 }, schema);
         },
         "return an object with `valid` set to true": assertValid,
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return validator.validate({ town: "luna", x: 'no' }, schema);
+          return validate({ town: "luna", x: 'no' }, schema);
         },
         "return an object with `valid` set to false": assertInvalid
       }
@@ -194,13 +189,13 @@ vows.describe('validator', {
       },
       "when the object conforms": {
         topic: function (schema) {
-          return validator.validate({ town: "luna" }, schema);
+          return validate({ town: "luna" }, schema);
         },
         "return an object with `valid` set to true": assertValid
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return validator.validate({ town: "luna", area: 'park' }, schema);
+          return validate({ town: "luna", area: 'park' }, schema);
         },
         "return an object with `valid` set to false": assertInvalid
       }
@@ -213,13 +208,13 @@ vows.describe('validator', {
       },
       "when the object conforms": {
         topic: function (schema) {
-          return validator.validate({ town: "luna" }, schema, {additionalProperties: false});
+          return validate({ town: "luna" }, schema, {additionalProperties: false});
         },
         "return an object with `valid` set to true": assertValid
       },
       "when the object does not conform": {
         topic: function (schema) {
-          return validator.validate({ town: "luna", area: 'park' }, schema, {additionalProperties: false});
+          return validate({ town: "luna", area: 'park' }, schema, {additionalProperties: false});
         },
         "return an object with `valid` set to false": assertInvalid
       },
@@ -232,7 +227,7 @@ vows.describe('validator', {
         },
         "when the object does not conform": {
           topic: function (schema) {
-            return validator.validate({ town: "luna", area: 'park' }, schema, {additionalProperties: false});
+            return validate({ town: "luna", area: 'park' }, schema, {additionalProperties: false});
           },
           "return an object with `valid` set to true": assertValid
         }
@@ -298,10 +293,10 @@ vows.describe('validator', {
         palindrome: 'dennis sinned',
         _flag: true
       },
-      "can be validated with `validator.validate`": {
+      "can be validated with `validate`": {
         "and if it conforms": {
           topic: function (object, schema) {
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with the `valid` property set to true": assertValid,
           "return an object with the `errors` property as an empty array": function (res) {
@@ -313,7 +308,7 @@ vows.describe('validator', {
           topic: function (object, schema) {
             object = clone(object);
             delete object.author;
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid,
           "and an error concerning the 'required' attribute": assertHasError('required'),
@@ -323,7 +318,7 @@ vows.describe('validator', {
           topic: function (object, schema) {
             object = clone(object);
             delete object.category;
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with `valid` set to false":       assertValid
         },
@@ -331,7 +326,7 @@ vows.describe('validator', {
           topic: function (object, schema) {
             object = clone(object);
             object._additionalFlag = 'text';
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -339,7 +334,7 @@ vows.describe('validator', {
           topic: function (object, schema) {
             object = clone(object);
             object.tags = ['a', 'a'];
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -347,7 +342,7 @@ vows.describe('validator', {
           topic: function (object, schema) {
             object = clone(object);
             object.tags = ['a', '____'];
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -355,7 +350,7 @@ vows.describe('validator', {
           topic: function (object, schema) {
             object = clone(object);
             object.tags = ['x'];
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -363,7 +358,7 @@ vows.describe('validator', {
           topic: function (object, schema) {
             object = clone(object);
             object.date = 'bad date';
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid,
           "and the error message defined":                    assertHasErrorMsg('format', "must be a valid date and nothing else")
@@ -372,7 +367,7 @@ vows.describe('validator', {
           topic: function (object, schema) {
             object = clone(object);
             object.palindrome = 'bad palindrome';
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with `valid` set to false":       assertInvalid
         },
@@ -380,7 +375,7 @@ vows.describe('validator', {
           topic: function (object, schema) {
             object = clone(object);
             object.author = 'email@address.com';
-            return validator.validate(object, schema);
+            return validate(object, schema);
           },
           "return an object with `valid` set to false":      assertInvalid,
           "and an error concerning the 'pattern' attribute": assertHasError('pattern')
@@ -397,13 +392,13 @@ vows.describe('validator', {
       "and <integer> property": {
         "is castable string": {
           topic: function (schema) {
-            return validator.validate({ answer: "42" }, schema, { cast: true });
+            return validate({ answer: "42" }, schema, { cast: true });
           },
           "return an object with `valid` set to true": assertValid
         },
         "is uncastable string": {
           topic: function (schema) {
-            return validator.validate({ answer: "forty2" }, schema, { cast: true });
+            return validate({ answer: "forty2" }, schema, { cast: true });
           },
           "return an object with `valid` set to false": assertInvalid
         }
@@ -438,7 +433,7 @@ vows.describe('validator', {
           };
           var options = { cast: true, castSource: true };
           return {
-            res: validator.validate(source, schema, options),
+            res: validate(source, schema, options),
             source: source
           };
         },
@@ -487,38 +482,38 @@ vows.describe('validator', {
       "and <boolean> property": {
         "is castable 'true/false' string": {
           topic: function (schema) {
-            return validator.validate({ is_ready: "true" }, schema, { cast: true });
+            return validate({ is_ready: "true" }, schema, { cast: true });
           },
           "return an object with `valid` set to true": assertValid
         },
         "is castable '1/0' string": {
           topic: function (schema) {
-            return validator.validate({ is_ready: "1" }, schema, { cast: true });
+            return validate({ is_ready: "1" }, schema, { cast: true });
           },
           "return an object with `valid` set to true": assertValid
         },
         "is castable `1/0` integer": {
           topic: function (schema) {
-            return validator.validate({ is_ready: 1 }, schema, { cast: true });
+            return validate({ is_ready: 1 }, schema, { cast: true });
           },
           "return an object with `valid` set to true": assertValid
         },
         "is uncastable string": {
           topic: function (schema) {
-            return validator.validate({ is_ready: "not yet" }, schema, { cast: true });
+            return validate({ is_ready: "not yet" }, schema, { cast: true });
           },
           "return an object with `valid` set to false": assertInvalid
         },
         "is uncastable number": {
           topic: function (schema) {
-            return validator.validate({ is_ready: 42 }, schema, { cast: true });
+            return validate({ is_ready: 42 }, schema, { cast: true });
           },
           "return an object with `valid` set to false": assertInvalid
         }
       },
       "default true": {
         topic: function(schema) {
-          validator.validate.defaults.cast = true;
+          validator.setOptions({cast: true});
           return schema;
         },
         "and no direct <cast> option passed to validate": {

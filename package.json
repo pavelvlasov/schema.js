@@ -19,11 +19,12 @@
     "recursive"
   ],
   "devDependencies": {
-    "vows": "0.7.0"
+    "expect.js": "0.2.0",
+    "mocha": "1.17.0"
   },
   "main": "./lib/index",
   "scripts": {
-    "test": "vows test/*-test.js --spec"
+    "test": "mocha test/test.js"
   },
   "engines": {
     "node": ">= 0.4.0"
