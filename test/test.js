@@ -361,6 +361,7 @@ describe('validating', function() {
         answer2: { type: "number" },
         answer3: {type: "array", items: {type: "string"}},
         answer4: {type: "array", items: {type: "integer"}},
+        is_ready: {type: "boolean"},
         is_ready1: { type: "boolean" },
         is_ready2: { type: "boolean" },
         is_ready3: { type: "boolean" },
@@ -397,6 +398,63 @@ describe('validating', function() {
 			expect(source.is_ready4).to.equal(false);
 			expect(source.is_ready5).to.equal(false);
 			expect(source.is_ready6).to.equal(false);
+		});
+
+		it('validate object with castable properties', function() {
+			assertValid(validator.validate({is_ready: "true"}, schemaId, {cast: true}));
+			assertValid(validator.validate({is_ready: "1"}, schemaId, {cast: true}));
+			assertValid(validator.validate({is_ready: 1}, schemaId, {cast: true}));
+		});
+
+		it('validate object with uncastable properties', function() {
+			assertInvalid(validator.validate({is_ready: "not yet"}, schemaId, {cast: true}));
+			assertInvalid(validator.validate({is_ready: 42}, schemaId, {cast: true}));
+		});
+
+		it('set <cast> option to true', function() {
+			validator.setOptions({cast: true});
+		});
+
+		it('validate object without direct option', function() {
+			assertValid(validator.validate({answer: '42'}, schemaId));
+		});
+
+		it('validate object with <cast> false passed to validate', function() {
+			assertInvalid(validator.validate({answer: '42'}, schemaId, {cast: false}));
+		});
+	});
+
+	describe('with <applyDefaultValue> option validate object', function() {
+		var schemaId = 'applyDefaultValue';
+		validator.add({
+			properties: {
+        town: {
+          type: "string"
+        },
+        country: {
+          type: "object",
+          properties: {
+            id: { type: "integer" },
+            name: { type: "string" }
+          },
+          "default": {
+            id: 1,
+            name: "New Zealand"
+          }
+        },
+        planet: {
+          "type": "string",
+          "default": "Earth"
+        }
+      }
+		}, schemaId);
+
+		it('and set default values', function() {
+			var obj = {town: "Auckland"};
+			assertValid(validator.validate(obj, schemaId, {applyDefaultValue: true}));
+			expect(obj.town).to.equal('Auckland');
+			expect(obj.country).to.eql({id: 1, name: "New Zealand"});
+			expect(obj.planet).to.equal('Earth');
 		});
 	});
 });
