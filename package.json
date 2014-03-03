@@ -1,11 +1,11 @@
 {
-  "name": "conform",
+  "name": "schema.js",
   "version": "0.0.1",
   "description": "A schema validation and filtering framework",
   "author": "Pavel Vlasov <freakycue@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git://github.com/freakycue/conform.js"
+    "url": "git://github.com/freakycue/schema.js"
   },
   "keywords": [
     "validator",

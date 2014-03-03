@@ -1,24 +1,15 @@
-# conform
+# schema.js
 
 A schema validation and filtering framework for node.js  
-It's a fork of [revalidator](https://github.com/flatiron/revalidator) which
-extends him with ability to modify source object - apply default values, casts,
-filters to source objects (see *castSource*, *applyDefaultValue* at
-[options](#available-options), [filter section](#filter)) and other
-features such as *additionalProperties* [option](#available-options).
-
-Currently conform with default options fully backward compatible with
-revalidator 0.1.5 (except browsers support which should be ok but don't well
-tested cause no convenient way to do that with vows testing framework which
-is currently used).
+It's a fork of [conform.js](https://github.com/okv/conform.js) which
+extends him with `$ref` option.
 
 ## Example
-The core of `conform` is simple and succinct: `conform.validate(obj, schema)`: 
+The core of `schema.js` is simple and succinct: `validator.validate(obj, schemaId)`: 
  
 ``` js
-  var conform = require('conform');
-  
-  console.dir(conform.validate(someObject, {
+  var validator = require('schema.js').validator;
+  validator.add({
     properties: {
       url: {
         description: 'the url the object should be stored at',
@@ -37,7 +28,8 @@ The core of `conform` is simple and succinct: `conform.validate(obj, schema)`:
         default: null
       }
     }
-  }));
+  }, 'my_schema');
+  console.dir(validator.validate(someObject, 'my_schema'));
 ```
 
 This will return with a value indicating if the `obj` conforms to the `schema`. If it does not, a descriptive object will be returned containing the errors encountered with validation.
@@ -51,16 +43,16 @@ This will return with a value indicating if the `obj` conforms to the `schema`. 
 
 ## Installation
 
-### Installing conform
+### Installing schema.js
 ``` bash
-  $ npm install conform
+  $ npm install schema.js
 ```
 
 ## Usage
 
-`conform` takes json-schema as input to validate objects.
+`validator` takes json-schema as input to validate objects.
 
-### conform.validate (obj, schema, options)
+### validator.validate (obj, schema, options)
 
 This will return with a value indicating if the `obj` conforms to the `schema`. If it does not, a descriptive object will be returned containing the errors encountered with validation.
 
