@@ -456,5 +456,253 @@ describe('validating', function() {
 			expect(obj.country).to.eql({id: 1, name: "New Zealand"});
 			expect(obj.planet).to.equal('Earth');
 		});
+
+		it('and does not set if values already present in source', function() {
+			var obj = {
+				town: "New York",
+        country: {
+          id: 2,
+          name: "USA"
+        },
+        planet: "Mars"
+			};
+
+			assertValid(validator.validate(obj, schemaId, {applyDefaultValue: true}));
+			expect(obj.town).equal('New York');
+			expect(obj.country).eql({id: 2, name: 'USA'});
+			expect(obj.planet).equal('Mars');
+		});
+
+		it('if option not enabled', function() {
+			var obj = {town: 'Auckland'};
+
+			assertValid(validator.validate(obj, schemaId));
+			expect(obj.town).to.equal('Auckland');
+			expect(obj.country).not.to.be.ok();
+			expect(obj.planet).not.to.be.ok();
+		});
+	});
+
+	describe('<validateDefaultValue> option', function() {
+		var schemaId = 'validateDefaultValue';
+		validator.add({
+			properties: {
+        town: {
+          type: "string"
+        },
+        country: {
+          type: "object",
+          properties: {
+            id: { type: "integer" },
+            name: { type: "string" }
+          }
+        },
+        planet: {
+          "type": "string"
+        }
+      }
+		}, schemaId);
+
+		describe('enabled', function() {
+			it('and valid default value', function() {
+				validator.schemas[schemaId].properties.country['default'] =
+					{id: 1, name: "New Zealand"};
+				assertValid(validator.validate({
+					town: 'Auckland'
+				}, schemaId, {validateDefaultValue: true}));
+			});
+
+			it('and invalid default value', function() {
+				validator.schemas[schemaId].properties.country['default'] =
+					{id: 'abc', name: "New Zealand"};
+				var res = validator.validate({
+					town: 'Auckland'
+				}, schemaId, {validateDefaultValue: true});
+				assertInvalid(res);
+				assertHasError(res, 'type', 'id');
+			});
+		});
+
+		describe('not enabled', function() {
+			it('and invalid default value', function() {
+				assertValid(validator.validate({town: 'Auckland'}, schemaId));
+			});
+		});
+	});
+
+	describe('with break on first error options and' +
+		' source object with 2 errors', function() {
+		var schemaId = 'exitOnFirstError';
+		validator.add({
+			properties: {
+        town: {
+          type: "string"
+        },
+        country: {
+          type: "object",
+          properties: {
+            id: { type: "integer" },
+            name: { type: "string" }
+          },
+          "default": {
+            id: 1,
+            name: "New Zealand"
+          }
+        },
+        planet: {
+          "type": "string",
+          "default": "Earth"
+        }
+      }
+		}, schemaId);
+
+		it('when <exitOnFirstError> option enabled', function() {
+			var res = validator.validate({town: 1, planet: 1}, schemaId, {exitOnFirstError: 1});
+			assertInvalid(res);
+			expect(res.errors.length).to.equal(1);
+		});
+
+		it('when <exitOnFirstError> option not enabled', function() {
+			var res = validator.validate({town: 1, planet: 1}, schemaId);
+			assertInvalid(res);
+			expect(res.errors.length).to.equal(2);
+		});
+
+		it('when <failOnFirstError> option enabled', function() {
+			var err;
+			try {
+				validator.validate({town: 1, planet: 1}, schemaId, {failOnFirstError: true});
+			} catch (_err) {
+				err = _err;
+			}
+			expect(err.message).to.equal('Attribute `type` of property `town` hasn`t ' +
+        'pass check, expected value: `string` actual value: `number` ' +
+        'error message: `must be of string type`');
+			expect(err.info).to.be.ok();
+			expect(err instanceof Error).to.be.ok();
+		});
+	});
+
+	describe('filtering', function() {
+		validator.filters.trim = function(value) {
+      return value.replace(/^\s+|\s+$/g, '');
+    };
+
+    validator.filters.stripTags = function(value) {
+      return value.replace(/<(?:.|\n)*?>/gm, '');
+    };
+
+    var schemaId = 'filtering';
+    validator.add({
+    	properties: {
+        town: {
+          type: ["string", "null", "array"],
+          minLength: 3,
+          filter: "trim"
+        },
+        country: {
+          type: "object",
+          properties: {
+            id: { type: "integer" },
+            name: { type: "string", filter: "stripTags" }
+          }
+        },
+        planet: {
+          type: ["string", "integer", "object"],
+          filter: ["stripTags", validator.filters.trim]
+        }
+      }
+    }, schemaId);
+
+    describe('with valid values', function() {
+
+    	it('and should be ok', function() {
+    		var getSource = function() {
+		      return {
+		        town: "  Auckland  ",
+		        country: {
+		          id: 1,
+		          name: "<b>New Zealand</b>"
+		        },
+		        planet: "  <b>Earth</b>  "
+		      };
+		    };
+
+    		var source = getSource(),
+    			original = getSource();
+
+    		assertValid(validator.validate(source, schemaId));
+    		expect(source.town).to.equal(validator.filters.trim(original.town));
+    		expect(source.country.name).to
+    			.equal(validator.filters.stripTags(original.country.name));
+    		expect(source.planet).to.equal(
+    			validator.filters.stripTags(
+    				validator.filters.trim(original.planet)
+    			)
+    		);
+    	});
+
+    	it('but min length prevents filtering of \'town\' field', function() {
+    		var getSource = function() {
+	        return {
+	          town: " N",
+	          country: {
+	            id: 1,
+	            name: "<b>New Zealand</b>"
+	          },
+	          planet: "  <b>Earth</b>  "
+	        };
+	      };
+
+	      var source = getSource(),
+	      	original = getSource();
+
+	      var res = validator.validate(source, schemaId);
+	      assertInvalid(res);
+	      assertHasError(res, 'minLength', 'town');
+	      expect(source.town).equal(original.town);
+	      expect(source.planet).to.equal(
+    			validator.filters.stripTags(
+    				validator.filters.trim(original.planet)
+    			)
+    		);
+    	});
+    });
+
+		describe('with invalid values', function() {
+			it('(values break filter function)', function() {
+				var res = validator.validate({
+					town: null,
+          country: {
+            id: 1,
+            name: "<b>New Zealand</b>"
+          },
+          planet: 1
+				}, schemaId);
+
+				assertInvalid(res);
+				assertHasError(res, 'filter', 'town');
+				assertHasError(res, 'filter', 'planet');
+			});
+
+			it('(values of unfilterable types)', function() {
+				var res = validator.validate({
+          town: [1, 2],
+          country: {
+            id: 1,
+            name: "<b>New Zealand</b>"
+          },
+          planet: {name: "Earth"}
+        }, schemaId);
+
+        assertInvalid(res);
+        expect(res.errors[0].attribute).equal('filter');
+        expect(res.errors[0].property).equal('town');
+        expect(res.errors[0].message).equal('bad property type for filtering: array');
+        expect(res.errors[1].attribute).equal('filter');
+        expect(res.errors[1].property).equal('planet');
+        expect(res.errors[1].message).equal('bad property type for filtering: object');
+			});
+		});
 	});
 });
