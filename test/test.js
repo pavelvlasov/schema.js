@@ -776,5 +776,18 @@ describe('validating', function() {
 			assertInvalid(res);
 			assertHasError(res, 'type', 'town');
 		});
+
+		describe('validate object with old `validate` signature', function() {
+			it('valid object', function() {
+				assertValid(validator.validate(getSource(), validator.schemas[schemaId]));
+			});
+
+			it('invalid object', function() {
+				var obj = getSource();
+				obj.address.town = 123;
+				var res = validator.validate(obj, validator.schemas[schemaId]);
+				assertInvalid(res);
+			});
+		});
 	});
 });

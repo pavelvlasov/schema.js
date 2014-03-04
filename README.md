@@ -5,12 +5,13 @@ It's a fork of [conform.js](https://github.com/okv/conform.js) which
 extends him with `$ref` option.
 
 ## Example
-The core of `schema.js` is simple and succinct: `validator.validate(obj, schemaId)`: 
+The core of `schema.js` is simple and succinct: `validator.validate(obj, schemaId)` or simply
+`validator.validate(obj, schema)`: 
  
 ``` js
   var validator = require('schema.js').validator;
 
-  validator.add({
+  var schema = {
     properties: {
       url: {
         description: 'the url the object should be stored at',
@@ -30,7 +31,9 @@ The core of `schema.js` is simple and succinct: `validator.validate(obj, schemaI
       },
       address: {$ref: '#nested'}
     }
-  }, '#my_schema');
+  };
+
+  validator.add(schema, '#my_schema');
 
   validator.add({
     properties: {
@@ -41,6 +44,7 @@ The core of `schema.js` is simple and succinct: `validator.validate(obj, schemaI
   }, '#nested');
 
   console.dir(validator.validate(someObject, '#my_schema'));
+  console.dir(validator.validate(someObject, schema));
 ```
 
 This will return with a value indicating if the `obj` conforms to the `schema`. If it does not, a descriptive object will be returned containing the errors encountered with validation.
