@@ -1,6 +1,6 @@
 {
   "name": "schema.js",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A schema validation and filtering framework",
   "author": "Pavel Vlasov <freakycue@gmail.com>",
   "repository": {
