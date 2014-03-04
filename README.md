@@ -9,6 +9,7 @@ The core of `schema.js` is simple and succinct: `validator.validate(obj, schemaI
  
 ``` js
   var validator = require('schema.js').validator;
+
   validator.add({
     properties: {
       url: {
@@ -26,10 +27,20 @@ The core of `schema.js` is simple and succinct: `validator.validate(obj, schemaI
         description: 'what to store at the url',
         type: 'any',
         default: null
-      }
+      },
+      address: {$ref: '#nested'}
     }
-  }, 'my_schema');
-  console.dir(validator.validate(someObject, 'my_schema'));
+  }, '#my_schema');
+
+  validator.add({
+    properties: {
+      town: {type: 'string'},
+      city: {type: 'string'},
+      country: {type: 'string'}
+    }
+  }, '#nested');
+
+  console.dir(validator.validate(someObject, '#my_schema'));
 ```
 
 This will return with a value indicating if the `obj` conforms to the `schema`. If it does not, a descriptive object will be returned containing the errors encountered with validation.
@@ -250,6 +261,18 @@ Filter errors as validation errors sets `valid` to *false* and provides error
 description at `errors` array.  
 Complex types (array, object) can't be filtered directly, use filter for
 array items or object properties instead.
+
+### $ref
+You can add links to nested schemas, already loaded in validator,
+or use links to schema itself `$ref: '#'`.
+```js
+{
+  properties: {
+    nested: {$ref: '#nested'},
+    itself: {$ref: '#'}
+  }
+}
+```
 
 ### Nested Schema
 We also allow nested schema
