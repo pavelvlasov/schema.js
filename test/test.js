@@ -705,4 +705,76 @@ describe('validating', function() {
 			});
 		});
 	});
+
+	describe('validate with <$ref> directive', function() {
+		var schemaId = 'ref',
+			nestedSchemaId = 'refNested';
+
+		validator.add({
+			properties: {
+				town: {type: 'string'},
+				country: {
+	        type: 'object',
+	        properties: {
+	          id: {type: 'integer'},
+	          name: {type: 'string'}
+	        }
+	      },
+	      planet: {
+	        type: 'string'
+	      }
+			}
+		}, nestedSchemaId);
+
+		validator.add({
+			properties: {
+				title: {type: 'string'},
+				address: {$ref: nestedSchemaId}
+			}
+		}, schemaId);
+
+		var getSource = function() {
+			return {
+				title: 'Title',
+				address: {
+					town: 'Auckland',
+					country: {
+						id: 10,
+						name: 'USA'
+					},
+					planet: 'Earth'
+				}
+			};
+		};
+
+		it('validate valid object', function() {
+			assertValid(validator.validate(getSource(), schemaId));
+		});
+
+		it('validate invalid object', function() {
+			var obj = getSource();
+			obj.address.town = 123;
+
+			var res = validator.validate(obj, schemaId);
+			assertInvalid(res);
+			assertHasError(res, 'type', 'town');
+		});
+
+		validator.schemas[nestedSchemaId].properties.address = {$ref: '#'};
+		it('validate valid object with `#` <$ref> option', function() {
+			var obj = getSource();
+			obj.address = getSource();
+			assertValid(validator.validate(obj, nestedSchemaId));
+		});
+
+		it('validate invalid object with `#` <$ref> option', function() {
+			var obj = getSource();
+			obj.address.address = getSource().address;
+			obj.address.address.town = 123;
+
+			var res = validator.validate(obj, nestedSchemaId);
+			assertInvalid(res);
+			assertHasError(res, 'type', 'town');
+		});
+	});
 });
