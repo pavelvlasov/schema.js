@@ -344,7 +344,3 @@ run tests
 #### revalidator authors: [Charlie Robbins](http://nodejitsu.com), [Alexis Sellier](http://cloudhead.io)
 #### revalidator contributors: [Fedor Indutny](http://github.com/indutny), [Bradley Meck](http://github.com/bmeck), [Laurie Harper](http://laurie.holoweb.net/)
 #### License: Apache 2.0
-
-
-[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/freakycue/schema.js/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
-
