@@ -1,4 +1,4 @@
-# schema.js
+# schema.js [![Build Status](https://travis-ci.org/freakycue/schema.js.svg?branch=master)](https://travis-ci.org/freakycue/schema.js)
 
 A schema validation and filtering framework for node.js  
 It's a fork of [conform.js](https://github.com/okv/conform.js) which
